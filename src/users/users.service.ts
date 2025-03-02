@@ -1,39 +1,84 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { MongoRepository } from 'typeorm';
+import { ObjectId } from 'mongodb'; // Ensure correct import
 
 @Injectable()
 export class UsersService {
-  private users: User[] = [];
-  private idCounter = 1;
+  constructor(
+    @InjectRepository(User)
+    private userRepository: MongoRepository<User>, // Use MongoRepository
+  ) {}
 
-  create(createUserDto: CreateUserDto): User {
-    const newUser = { id: this.idCounter++, ...createUserDto };
-    this.users.push(newUser);
-    return newUser;
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    const user = this.userRepository.create(createUserDto);
+    return await this.userRepository.save(user);
   }
 
-  findAll(): User[] {
-    return this.users;
+  async getAllUsers(): Promise<User[]> {
+    return await this.userRepository.find();
   }
 
-  findOne(id: number) {
-    return this.users.find((user) => user.id === id);
-  }
+  async getUserById(id: string): Promise<User | null> {
+    const objectId = new ObjectId(id); // Convert string to ObjectId
 
-  update(id: number, updateUserDto: Partial<CreateUserDto>): User {
-    const user = this.findOne(id);
+    const user = await this.userRepository.findOneBy({
+      _id: objectId, // Use `_id` here
+    });
+
     if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new NotFoundException('User not found');
     }
-    Object.assign(user, updateUserDto);
+
     return user;
   }
 
-  remove(id: number): boolean {
-    const index = this.users.findIndex((user) => user.id === id);
-    if (index === -1) return false;
-    this.users.splice(index, 1);
-    return true;
+  async _updateUser(id: string, updateData: UpdateUserDto): Promise<User> {
+    const objectId = new ObjectId(id); // Convert string to ObjectId
+
+    const result = await this.userRepository.update(
+      { id: objectId }, // Use `_id` here
+      updateData,
+    );
+
+    if (result.affected === 0) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updatedUser = await this.getUserById(id);
+
+    if (!updatedUser) {
+      throw new NotFoundException('User not found after update');
+    }
+
+    return updatedUser;
+  }
+
+  async updateUser(id: string, updateData: UpdateUserDto): Promise<User> {
+    const objectId = new ObjectId(id); // Convert string to ObjectId
+
+    // Find the user by ID
+    const user = await this.userRepository.findOneBy({ _id: objectId });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Merge the updateData into the existing user object
+    const updatedUser = this.userRepository.merge(user, updateData);
+
+    // Save the updated user
+    return await this.userRepository.save(updatedUser);
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const objectId = new ObjectId(id); // Convert string to ObjectId
+
+    const result = await this.userRepository.delete({ id: objectId }); // Use `_id` here
+
+    return result.affected ? result.affected > 0 : false;
   }
 }
