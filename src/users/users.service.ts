@@ -36,27 +36,6 @@ export class UsersService {
     return user;
   }
 
-  async _updateUser(id: string, updateData: UpdateUserDto): Promise<User> {
-    const objectId = new ObjectId(id); // Convert string to ObjectId
-
-    const result = await this.userRepository.update(
-      { id: objectId }, // Use `_id` here
-      updateData,
-    );
-
-    if (result.affected === 0) {
-      throw new NotFoundException('User not found');
-    }
-
-    const updatedUser = await this.getUserById(id);
-
-    if (!updatedUser) {
-      throw new NotFoundException('User not found after update');
-    }
-
-    return updatedUser;
-  }
-
   async updateUser(id: string, updateData: UpdateUserDto): Promise<User> {
     const objectId = new ObjectId(id); // Convert string to ObjectId
 

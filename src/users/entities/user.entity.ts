@@ -1,5 +1,5 @@
-import { Entity, ObjectIdColumn, Column, ObjectId } from 'typeorm';
-// import { ObjectId } from 'mongodb';
+import { Entity, ObjectIdColumn, Column, ObjectId, Index } from 'typeorm';
+import { IsEmail, IsNotEmpty, Max, Min } from 'class-validator';
 
 @Entity()
 export class User {
@@ -7,11 +7,16 @@ export class User {
   id: ObjectId;
 
   @Column()
+  @IsNotEmpty()
   name: string;
 
   @Column({ unique: true })
+  @IsEmail()
+  @Index()
   email: string;
 
-  @Column()
+  @Column({ default: 18 })
+  @Min(1)
+  @Max(120)
   age: number;
 }
